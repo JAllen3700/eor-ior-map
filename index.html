@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EOR / IOR Living Database Map — USA Oil & Gas</title>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<!-- MarkerCluster CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
+<style>
+:root {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-tertiary: #0f3460;
+  --bg-card: #1e2a4a;
+  --text-primary: #e8e8e8;
+  --text-secondary: #a0a0b0;
+  --accent: #e94d1a;
+  --accent-hover: #ff6b35;
+  --accent-dim: rgba(233,77,26,0.2);
+  --border: #2a3a5e;
+  --input-bg: #0d1b36;
+  --modal-bg: #1a1a2e;
+  --shadow: rgba(0,0,0,0.5);
+}
+.light-mode {
+  --bg-primary: #f0f2f5;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e3e7ed;
+  --bg-card: #ffffff;
+  --text-primary: #1a1a2e;
+  --text-secondary: #555;
+  --accent: #d4410b;
+  --accent-hover: #e94d1a;
+  --accent-dim: rgba(233,77,26,0.1);
+  --border: #ccc;
+  --input-bg: #f8f8f8;
+  --modal-bg: #fff;
+  --shadow: rgba(0,0,0,0.2);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+/* TOP BAR */
+#topbar {
+  position: fixed; top:0; left:0; right:0; z-index:1100;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-secondary);
+  border-bottom: 2px solid var(--accent);
+  padding: 8px 16px;
+  height: 52px;
+}
+#topbar .logo {
+  font-weight: 700; font-size: 16px; color: var(--accent);
+  white-space: nowrap; letter-spacing: 0.5px;
+}
+#topbar .logo span { color: var(--text-primary); font-weight: 400; }
+#searchBox {
+  flex: 1; max-width: 400px;
+  background: var(--input-bg); border: 1px solid var(--border);
+  color: var(--text-primary); padding: 6px 12px;
+  border-radius: 4px; font-size: 14px; outline: none;
+}
+#searchBox:focus { border-color: var(--accent); }
+#searchBox::placeholder { color: var(--text-secondary); }
+#yearFilter {
+  background: var(--input-bg); border: 1px solid var(--border);
+  color: var(--text-primary); padding: 6px 8px;
+  border-radius: 4px; font-size: 13px; outline: none; cursor: pointer;
+}
+#yearFilter:focus { border-color: var(--accent); }
+.topbar-btn {
+  background: var(--bg-tertiary); border: 1px solid var(--border);
+  color: var(--text-primary); padding: 6px 12px;
+  border-radius: 4px; font-size: 13px; cursor: pointer;
+  white-space: nowrap; transition: background 0.2s;
+}
+.topbar-btn:hover { background: var(--accent); color: #fff; }
+#heatmapToggle.active { background: var(--accent); color: #fff; }
+#themeToggle { font-size: 16px; padding: 4px 10px; }
+#sidebarToggle { display: none; font-size: 18px; padding: 4px 10px; }
+
+/* SIDEBAR */
+#sidebar {
+  position: fixed; top: 52px; left: 0; bottom: 0;
+  width: 300px; z-index: 1050;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  overflow-y: auto; padding: 12px;
+  transition: transform 0.3s;
+}
+#sidebar.hidden { transform: translateX(-100%); }
+#sidebar h3 {
+  font-size: 13px; text-transform: uppercase;
+  color: var(--accent); letter-spacing: 1px;
+  margin: 14px 0 8px; border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+#sidebar h3:first-child { margin-top: 0; }
+.basin-btn {
+  display: block; width: 100%;
+  background: var(--bg-card); border: 1px solid var(--border);
+  color: var(--text-primary); padding: 7px 10px;
+  border-radius: 4px; font-size: 13px; cursor: pointer;
+  margin-bottom: 4px; text-align: left; transition: all 0.2s;
+}
+.basin-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
+.collapsible { cursor: pointer; user-select: none; }
+.collapsible:hover { color: var(--accent-hover); }
+.collapse-arrow {
+  float: right; font-size: 11px;
+  transition: transform 0.2s;
+}
+.collapsible.open .collapse-arrow { transform: rotate(90deg); }
+.collapsed { display: none; }
+.operator-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-primary);
+  padding: 4px 8px; margin-bottom: 2px;
+  border-radius: 3px; cursor: pointer;
+  transition: all 0.2s; user-select: none;
+  background: var(--bg-card); border: 1px solid var(--border);
+}
+.operator-item:hover { border-color: var(--accent); background: var(--accent-dim); }
+.operator-item.dimmed { opacity: 0.35; }
+.operator-item.active-op { border-color: var(--accent); background: var(--accent-dim); }
+.operator-item .op-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent); flex-shrink: 0;
+}
+.operator-item .op-count {
+  margin-left: auto; font-size: 10px;
+  color: var(--text-secondary); white-space: nowrap;
+}
+.form-group { margin-bottom: 8px; }
+.form-group label {
+  display: block; font-size: 12px;
+  color: var(--text-secondary); margin-bottom: 2px;
+}
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  background: var(--input-bg); border: 1px solid var(--border);
+  color: var(--text-primary); padding: 5px 8px;
+  border-radius: 3px; font-size: 13px; outline: none;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: var(--accent);
+}
+.form-group textarea { resize: vertical; min-height: 50px; }
+.btn-primary {
+  background: var(--accent); color: #fff; border: none;
+  padding: 8px 16px; border-radius: 4px; cursor: pointer;
+  font-size: 13px; width: 100%; font-weight: 600;
+  transition: background 0.2s;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-secondary {
+  background: var(--bg-tertiary); color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 7px 12px; border-radius: 4px; cursor: pointer;
+  font-size: 12px; flex: 1; transition: background 0.2s;
+}
+.btn-secondary:hover { background: var(--accent); color: #fff; }
+.btn-row { display: flex; gap: 6px; margin-top: 6px; }
+#importFile { display: none; }
+.stats-bar {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;
+}
+.stat-chip {
+  background: var(--accent-dim); border: 1px solid var(--accent);
+  border-radius: 12px; padding: 2px 10px;
+  font-size: 11px; color: var(--accent);
+}
+
+/* MAP */
+#map {
+  position: fixed;
+  top: 52px; left: 300px; right: 0; bottom: 0;
+  z-index: 1000;
+}
+
+/* LEGEND */
+#legend {
+  position: fixed; bottom: 16px; right: 16px; z-index: 1100;
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 14px;
+  min-width: 180px; box-shadow: 0 2px 12px var(--shadow);
+}
+#legend h4 {
+  font-size: 12px; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--text-primary);
+  margin-bottom: 3px; cursor: pointer;
+  padding: 1px 0; transition: opacity 0.2s;
+}
+.legend-item.dimmed { opacity: 0.35; }
+.legend-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.3);
+  flex-shrink: 0;
+}
+
+/* MODAL */
+#modalOverlay {
+  display: none; position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,0.6);
+  justify-content: center; align-items: center;
+}
+#modalOverlay.visible { display: flex; }
+#modal {
+  background: var(--modal-bg); border: 1px solid var(--border);
+  border-radius: 8px; width: 90%; max-width: 560px;
+  max-height: 85vh; overflow-y: auto;
+  box-shadow: 0 8px 40px var(--shadow);
+  position: relative;
+}
+#modalClose {
+  position: absolute; top: 8px; right: 12px;
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 24px; cursor: pointer; line-height: 1;
+}
+#modalClose:hover { color: var(--accent); }
+#modalHeader {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+#modalHeader h2 { font-size: 18px; color: var(--accent); margin-bottom: 2px; }
+#modalHeader .sub { font-size: 13px; color: var(--text-secondary); }
+#modalBody { padding: 16px 20px; }
+.detail-row {
+  display: flex; margin-bottom: 8px; font-size: 14px;
+}
+.detail-label {
+  width: 110px; flex-shrink: 0;
+  color: var(--text-secondary); font-weight: 600;
+}
+.detail-value { color: var(--text-primary); flex: 1; }
+.detail-value a { color: var(--accent); text-decoration: none; }
+.detail-value a:hover { text-decoration: underline; }
+#modalNotes {
+  width: 100%; min-height: 80px; margin-top: 8px;
+  background: var(--input-bg); border: 1px solid var(--border);
+  color: var(--text-primary); padding: 8px 10px;
+  border-radius: 4px; font-size: 13px; outline: none;
+  resize: vertical; font-family: inherit;
+}
+#modalNotes:focus { border-color: var(--accent); }
+#noteStatus {
+  font-size: 11px; color: var(--text-secondary);
+  margin-top: 4px; text-align: right;
+}
+.tech-badge {
+  display: inline-block; padding: 2px 10px;
+  border-radius: 12px; font-size: 12px;
+  color: #fff; font-weight: 600;
+}
+#deleteProject {
+  background: #c0392b; color: #fff; border: none;
+  padding: 6px 14px; border-radius: 4px; cursor: pointer;
+  font-size: 12px; margin-top: 12px; transition: background 0.2s;
+}
+#deleteProject:hover { background: #e74c3c; }
+
+/* CLUSTER OVERRIDES */
+.marker-cluster-small { background: rgba(233,77,26,0.4); }
+.marker-cluster-small div { background: rgba(233,77,26,0.7); color:#fff; }
+.marker-cluster-medium { background: rgba(233,77,26,0.5); }
+.marker-cluster-medium div { background: rgba(233,77,26,0.8); color:#fff; }
+.marker-cluster-large { background: rgba(233,77,26,0.6); }
+.marker-cluster-large div { background: rgba(233,77,26,0.9); color:#fff; }
+
+/* SCROLLBAR */
+#sidebar::-webkit-scrollbar { width: 6px; }
+#sidebar::-webkit-scrollbar-track { background: var(--bg-primary); }
+#sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+#modal::-webkit-scrollbar { width: 6px; }
+#modal::-webkit-scrollbar-track { background: var(--bg-primary); }
+#modal::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  #sidebarToggle { display: block; }
+  #sidebar { transform: translateX(-100%); }
+  #sidebar.open { transform: translateX(0); }
+  #map { left: 0; }
+  #topbar .logo span { display: none; }
+  #legend { bottom: 8px; right: 8px; min-width: 150px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <button id="sidebarToggle" class="topbar-btn" onclick="toggleSidebar()">☰</button>
+  <div class="logo">EOR/IOR <span>Living Database</span></div>
+  <input type="text" id="searchBox" placeholder="Search company, basin, well, technology…" oninput="applyFilters()">
+  <select id="yearFilter" onchange="applyFilters()">
+    <option value="">All Years</option>
+  </select>
+  <button id="heatmapToggle" class="topbar-btn" onclick="toggleHeatmap()">🌡 Heatmap</button>
+  <button id="themeToggle" class="topbar-btn" onclick="toggleTheme()">☀️</button>
+</div>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="stats-bar">
+    <span class="stat-chip" id="statTotal">0 Projects</span>
+    <span class="stat-chip" id="statVisible">0 Visible</span>
+  </div>
+
+  <h3>Basin Quick-Zoom</h3>
+  <button class="basin-btn" onclick="zoomTo(31.9,-103.5,7)">Permian Basin</button>
+  <button class="basin-btn" onclick="zoomTo(29.5,-98.5,7)">Eagle Ford</button>
+  <button class="basin-btn" onclick="zoomTo(47.8,-103.4,7)">Bakken</button>
+  <button class="basin-btn" onclick="zoomTo(40.3,-104.9,7)">Niobrara</button>
+  <button class="basin-btn" onclick="zoomTo(28.8,-100.3,8)">Maverick Basin</button>
+
+  <h3>Operators</h3>
+  <div id="operatorFilter"></div>
+
+  <h3 class="collapsible" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('collapsed')">+ Add New Project <span class="collapse-arrow">▸</span></h3>
+  <div id="addProjectForm" class="collapsed">
+    <div class="form-group">
+      <label>Company *</label>
+      <input type="text" id="fCompany" placeholder="e.g. Devon Energy">
+    </div>
+    <div class="form-group">
+      <label>Basin *</label>
+      <input type="text" id="fBasin" placeholder="e.g. Permian">
+    </div>
+    <div class="form-group">
+      <label>Latitude *</label>
+      <input type="number" step="0.001" id="fLat" placeholder="31.9">
+    </div>
+    <div class="form-group">
+      <label>Longitude *</label>
+      <input type="number" step="0.001" id="fLng" placeholder="-103.5">
+    </div>
+    <div class="form-group">
+      <label>Technology *</label>
+      <select id="fTech">
+        <option value="CO2 Flood">CO2 Flood</option>
+        <option value="Gas Huff-n-Puff">Gas Huff-n-Puff</option>
+        <option value="Cyclic Gas Huff-n-Puff">Cyclic Gas Huff-n-Puff</option>
+        <option value="NGL Cyclic Injection">NGL Cyclic Injection</option>
+        <option value="Y-Grade Huff-n-Puff">Y-Grade Huff-n-Puff</option>
+        <option value="Waterflood">Waterflood</option>
+        <option value="Surfactant Flood">Surfactant Flood</option>
+        <option value="Polymer Flood">Polymer Flood</option>
+        <option value="Gas Lift / EOR Candidate">Gas Lift / EOR Candidate</option>
+        <option value="Miscible Gas Injection">Miscible Gas Injection</option>
+        <option value="PLA Surfactant Huff-n-Puff">PLA Surfactant Huff-n-Puff</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Year *</label>
+      <input type="number" id="fYear" placeholder="2024" min="1990" max="2030">
+    </div>
+    <div class="form-group">
+      <label>Well Name</label>
+      <input type="text" id="fWell" placeholder="e.g. Wolfcamp A-12H">
+    </div>
+    <div class="form-group">
+      <label>Results</label>
+      <textarea id="fResults" placeholder="Summary of results…"></textarea>
+    </div>
+    <div class="form-group">
+      <label>PDF Link</label>
+      <input type="text" id="fPdf" placeholder="https://…">
+    </div>
+    <button class="btn-primary" onclick="addProject()">+ Add Project</button>
+  </div>
+
+  <h3>Data Management</h3>
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="exportJSON()">⬇ Export JSON</button>
+    <button class="btn-secondary" onclick="document.getElementById('importFile').click()">⬆ Import JSON</button>
+  </div>
+  <input type="file" id="importFile" accept=".json" onchange="importJSON(event)">
+  <div class="btn-row" style="margin-top:4px">
+    <button class="btn-secondary" onclick="resetData()">↺ Reset to Defaults</button>
+  </div>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- LEGEND -->
+<div id="legend">
+  <h4>Technology Legend</h4>
+  <div id="legendItems"></div>
+</div>
+
+<!-- MODAL -->
+<div id="modalOverlay" onclick="closeModal(event)">
+  <div id="modal" onclick="event.stopPropagation()">
+    <button id="modalClose" onclick="closeModalDirect()">&times;</button>
+    <div id="modalHeader">
+      <h2 id="modalTitle"></h2>
+      <div class="sub" id="modalSub"></div>
+    </div>
+    <div id="modalBody">
+      <div class="detail-row"><span class="detail-label">Basin</span><span class="detail-value" id="mBasin"></span></div>
+      <div class="detail-row"><span class="detail-label">Technology</span><span class="detail-value" id="mTech"></span></div>
+      <div class="detail-row"><span class="detail-label">Year</span><span class="detail-value" id="mYear"></span></div>
+      <div class="detail-row"><span class="detail-label">Well</span><span class="detail-value" id="mWell"></span></div>
+      <div class="detail-row"><span class="detail-label">Results</span><span class="detail-value" id="mResults"></span></div>
+      <div class="detail-row"><span class="detail-label">PDF Report</span><span class="detail-value" id="mPdf"></span></div>
+      <div class="detail-row"><span class="detail-label">Coordinates</span><span class="detail-value" id="mCoords"></span></div>
+      <div style="margin-top:12px">
+        <label style="font-size:13px;color:var(--text-secondary);font-weight:600;">Notes</label>
+        <textarea id="modalNotes" placeholder="Add your notes here… (auto-saved)" oninput="saveNote()"></textarea>
+        <div id="noteStatus"></div>
+      </div>
+      <button id="deleteProject" onclick="deleteCurrentProject()">🗑 Delete Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- MarkerCluster JS -->
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<!-- Leaflet.heat JS -->
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+<script>
+/* ============================================================
+   DEFAULT PROJECT DATA
+   ============================================================ */
+const DEFAULT_PROJECTS = [
+  {
+    id: 1,
+    company: "EERC / C3 / Continental",
+    basin: "Bakken",
+    lat: 47.8, lng: -103.4,
+    technology: "NGL Cyclic Injection",
+    year: 2025,
+    wellName: "Multiple wells",
+    results: "1000+ candidates, $3.5B–$11.9B NPV potential",
+    pdfLink: "https://drive.google.com/file/d/1vBxRSNVUV3gkBgS18WVpvo79SZTyDgX-/view",
+    notes: ""
+  },
+  {
+    id: 2,
+    company: "MD America / Estis",
+    basin: "Eagle Ford (Eastern)",
+    lat: 30.9, lng: -96.0,
+    technology: "Cyclic Gas Huff-n-Puff",
+    year: 2023,
+    wellName: "Madison County Pilot",
+    results: "Promising uplift after 5 cycles",
+    pdfLink: "https://drive.google.com/file/d/1HlVppM5xVy-Kd_7ysuH9X13GqBQW6obO/view",
+    notes: ""
+  },
+  {
+    id: 3,
+    company: "BlackBrush Oil & Gas",
+    basin: "Eagle Ford (Maverick)",
+    lat: 28.6, lng: -100.2,
+    technology: "Y-Grade Huff-n-Puff",
+    year: 2025,
+    wellName: "Chittim Ranch",
+    results: "Peak >1000 bbl/day (50x increase)",
+    pdfLink: "https://drive.google.com/file/d/10-MKQ0UFceDD_WmueriLnZnA1xO19fGH/view",
+    notes: ""
+  },
+  {
+    id: 4,
+    company: "EP Energy / UT Austin",
+    basin: "Eagle Ford",
+    lat: 29.5, lng: -98.0,
+    technology: "Gas Huff-n-Puff",
+    year: 2019,
+    wellName: "Gas Condensate Wells",
+    results: "Enhanced condensate recovery",
+    pdfLink: "https://drive.google.com/file/d/1ZPRjlXe1HTOYSHJTlXZef0ydljP-yJCW/view",
+    notes: ""
+  },
+  {
+    id: 5,
+    company: "Niobrara Bake/Shake Pad",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.33, lng: -104.977,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2022,
+    wellName: "Bake & Shake series",
+    results: "Cum oil 68k–278k bbl per well",
+    pdfLink: "https://drive.google.com/file/d/18Ns95BkMDQmRPrIBP87bpdMJ4WbR3Bk2/view",
+    notes: ""
+  },
+  {
+    id: 6,
+    company: "Occidental",
+    basin: "Permian (Delaware)",
+    lat: 31.85, lng: -103.95,
+    technology: "CO2 Flood",
+    year: 2024,
+    wellName: "Seminole Unit CO2-EOR",
+    results: "15–20% incremental recovery; ongoing CO2 utilization from DAC",
+    pdfLink: "",
+    notes: ""
+  },
+  {
+    id: 7,
+    company: "Kinder Morgan / SACROC",
+    basin: "Permian (Midland)",
+    lat: 32.65, lng: -101.25,
+    technology: "CO2 Flood",
+    year: 2021,
+    wellName: "SACROC Unit",
+    results: "Longest-running CO2 EOR project in the world; significant tertiary recovery",
+    pdfLink: "",
+    notes: ""
+  },
+  {
+    id: 8,
+    company: "Devon Energy",
+    basin: "Permian (Wolfcamp)",
+    lat: 32.0, lng: -102.1,
+    technology: "Waterflood",
+    year: 2023,
+    wellName: "Wolfcamp A Pilot",
+    results: "Pressure maintenance and sweep improvement observed",
+    pdfLink: "",
+    notes: ""
+  },
+  {
+    id: 9,
+    company: "ConocoPhillips",
+    basin: "Bakken (Elm Coulee)",
+    lat: 47.5, lng: -106.3,
+    technology: "Surfactant Flood",
+    year: 2022,
+    wellName: "Elm Coulee Surfactant Pilot",
+    results: "Moderate IFT reduction; incremental oil observed in offset wells",
+    pdfLink: "",
+    notes: ""
+  },
+  {
+    id: 10,
+    company: "Third Wave Production",
+    basin: "Eagle Ford",
+    lat: 29.2, lng: -98.3,
+    technology: "Surfactant Flood",
+    year: 2020,
+    wellName: "Eagle Ford Declined Well Pilot",
+    results: "3x oil rate sustained 24 months post-treatment; IRR >100%, 7-month payout; 12,300 bbl surfactant injected, 30-day soak",
+    pdfLink: "",
+    notes: ""
+  },
+  {
+    id: 11,
+    company: "Third Wave Production",
+    basin: "Eagle Ford",
+    lat: 29.0, lng: -97.8,
+    technology: "Surfactant Flood",
+    year: 2021,
+    wellName: "Eagle Ford Declined Well + Diverter",
+    results: "2x pre-stim oil rate; 11,300 bbl surfactant with 11 diverter stages, 30-day soak; ~50% estimated IRR",
+    pdfLink: "",
+    notes: ""
+  },
+  {
+    id: 12,
+    company: "Third Wave Production",
+    basin: "Eagle Ford",
+    lat: 29.3, lng: -97.5,
+    technology: "Surfactant Flood",
+    year: 2022,
+    wellName: "Six-Well Campaign",
+    results: "5 of 6 wells showed significant incremental oil uplift; 2,500 bbl/well injected down annulus, 20-day soak; $22/bbl incremental cost",
+    pdfLink: "",
+    notes: ""
+  },
+  {
+    id: 13,
+    company: "Third Wave Production",
+    basin: "Permian (Midland)",
+    lat: 32.05, lng: -101.85,
+    technology: "Surfactant Flood",
+    year: 2023,
+    wellName: "Midland Basin 2-Mile Lateral Pilot",
+    results: "Evidence of undertreatment on 2-mile laterals; project economics not favorable; 30-day soak",
+    pdfLink: "",
+    notes: ""
+  },
+  {
+    id: 14,
+    company: "Third Wave Production",
+    basin: "Eagle Ford",
+    lat: 28.85, lng: -98.5,
+    technology: "Surfactant Flood",
+    year: 2023,
+    wellName: "Eagle Ford Multiwell Inter-Well Stimulation",
+    results: "Injected into 2 wells targeting 9 adjacent wells; outstanding economics — payout 2.5 months, IRR >200%; 13-day soak",
+    pdfLink: "https://drive.google.com/file/d/1DNF1raq2lFazopDlFox35DKZCti3v4Hg/view",
+    notes: ""
+  },
+  {
+    id: 15,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.32988, lng: -104.977256,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2022,
+    wellName: "Bake 11-16HZ",
+    results: "API: 512351413 | Target: Codell | TVD: 7,126 ft | Cum Oil: 178,600 bbl | Cum Oil/ft: 17.82 | Stages: 25",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 16,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.32988, lng: -104.977202,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2022,
+    wellName: "Bake 11-17HZ",
+    results: "API: 512351401 | Target: Niobrara-A | TVD: 6,841 ft | Cum Oil: 209,700 bbl | Cum Oil/ft: 20.63 | Stages: 37",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 17,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.32988, lng: -104.977149,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2022,
+    wellName: "Bake 11-18HZ",
+    results: "API: 512351415 | Target: Niobrara-C | TVD: 6,822 ft | Cum Oil: 203,300 bbl | Cum Oil/ft: 20.11 | Stages: 37",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 18,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.32988, lng: -104.977095,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2022,
+    wellName: "Bake 11-19HZ",
+    results: "API: 512351420 | Target: Codell | TVD: 7,076 ft | Cum Oil: 278,900 bbl | Cum Oil/ft: 27.70 | Stages: 25",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 19,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.329879, lng: -104.977042,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2022,
+    wellName: "Bake 11-20HZ",
+    results: "API: 512351404 | Target: Niobrara-A | TVD: 6,622 ft | Cum Oil: 250,900 bbl | Cum Oil/ft: 25.01 | Stages: 37",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 20,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.329879, lng: -104.976988,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2022,
+    wellName: "Bake 11-21HZ",
+    results: "API: 512351403 | Target: Niobrara-C | TVD: 6,742 ft | Cum Oil: 205,900 bbl | Cum Oil/ft: 20.33 | Stages: 37",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 21,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.330318, lng: -104.976823,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2021,
+    wellName: "Shake 11-10HZ",
+    results: "API: 512351398 | Target: Codell | TVD: 7,069 ft | Cum Oil: 92,300 bbl | Cum Oil/ft: 9.59 | Stages: 25",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 22,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.330317, lng: -104.97677,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2021,
+    wellName: "Shake 11-11HZ",
+    results: "API: 512351409 | Target: Niobrara-A | TVD: 6,820 ft | Cum Oil: 205,900 bbl | Cum Oil/ft: 20.47 | Stages: 37",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 23,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.330318, lng: -104.976716,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2021,
+    wellName: "Shake 11-12HZ",
+    results: "API: 512351400 | Target: Codell | TVD: 7,086 ft | Cum Oil: 68,610 bbl | Cum Oil/ft: 7.37 | Stages: 24",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 24,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.33032, lng: -104.977306,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2022,
+    wellName: "Shake 11-1HZ",
+    results: "API: 512351405 | Target: Codell | TVD: 7,140 ft | Cum Oil: 56,630 bbl | Cum Oil/ft: 11.69 | Stages: 12",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 25,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.33032, lng: -104.977253,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2022,
+    wellName: "Shake 11-2HZ",
+    results: "API: 512351407 | Target: Codell | TVD: 7,154 ft | Cum Oil: 90,825 bbl | Cum Oil/ft: 19.06 | Stages: 12",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 26,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.33032, lng: -104.977199,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2022,
+    wellName: "Shake 11-3HZ",
+    results: "API: 512351419 | Target: Niobrara-C | TVD: 7,001 ft | Cum Oil: 160,000 bbl | Cum Oil/ft: 15.80 | Stages: 37",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 27,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.330318, lng: -104.977093,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2022,
+    wellName: "Shake 11-5HZ",
+    results: "API: 512351412 | Target: Niobrara-A | TVD: 6,828 ft | Cum Oil: 195,900 bbl | Cum Oil/ft: 19.65 | Stages: 37",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 28,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.330318, lng: -104.977038,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2022,
+    wellName: "Shake 11-6HZ",
+    results: "API: 512351406 | Target: Codell | TVD: 7,134 ft | Cum Oil: 64,500 bbl | Cum Oil/ft: 13.96 | Stages: 12",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 29,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.330318, lng: -104.976985,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2022,
+    wellName: "Shake 11-7HZ",
+    results: "API: 512351416 | Target: Niobrara-A | TVD: 6,845 ft | Cum Oil: 153,300 bbl | Cum Oil/ft: 15.36 | Stages: 37",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 30,
+    company: "Occidental",
+    basin: "Niobrara (Weld Co, CO)",
+    lat: 40.330318, lng: -104.976877,
+    technology: "Gas Lift / EOR Candidate",
+    year: 2021,
+    wellName: "Shake 11-9HZ",
+    results: "API: 512351399 | Target: Niobrara-A | TVD: 6,750 ft | Cum Oil: 220,000 bbl | Cum Oil/ft: 22.16 | Stages: 37",
+    pdfLink: "https://docs.google.com/spreadsheets/d/1vo0gXJP5PLKmagnl6BzmhvFWwIBDYJ29/edit?usp=sharing",
+    notes: ""
+  },
+  {
+    id: 31,
+    company: "Auterra Energy",
+    basin: "Eagle Ford (Gonzales Co, TX)",
+    lat: 29.46, lng: -97.44,
+    technology: "PLA Surfactant Huff-n-Puff",
+    year: 2024,
+    wellName: "EF-1 & EF-2 (Gonzales Co)",
+    results: "Surfactant HnP on 2 Eagle Ford wells; oil rates uplifted 2–5x post-treatment; EF-1: 4,000 bbl incremental over 2 yrs; EF-2 (w/ PLA diverter): 2,200 bbl incremental, more gradual sustained recovery; 1.5–2x rate uplift persisting at 2 years; PLA diverter dispersed treatment for controlled recovery",
+    pdfLink: "https://drive.google.com/file/d/1nyk_H4guTUQ6pRK4EL0ZeLJFU2xaNnY2/view",
+    notes: ""
+  },
+  {
+    id: 32,
+    company: "Ovintiv",
+    basin: "Permian (Midland Basin, TX)",
+    lat: 32.15, lng: -101.6,
+    technology: "Surfactant Flood",
+    year: 2025,
+    wellName: "Midland Basin Surfactant Study",
+    results: "Surfactant wells outproduce controls by 20% on 6-month cum oil per 1,000 lateral ft; raw cum oil/well 28% higher; gas shows similar proportional uplift; clear separation across raw and normalized metrics over first 6 months",
+    pdfLink: "https://drive.google.com/file/d/1cvW_biqYdjwhrvzYaAS8-whkFfEjuoSX/view",
+    notes: "Surfactants used: StimOil Q801 (Tension Reducer) and CSURF 364S (Non-Ionic Surfactant)"
+  }
+];
+
+/* Technology color mapping */
+const TECH_COLORS = {
+  "NGL Cyclic Injection":     "#FF6B35",
+  "Cyclic Gas Huff-n-Puff":   "#00BCD4",
+  "Y-Grade Huff-n-Puff":      "#66BB6A",
+  "Gas Huff-n-Puff":          "#AB47BC",
+  "Gas Lift / EOR Candidate":  "#FDD835",
+  "CO2 Flood":                "#EF5350",
+  "Waterflood":               "#42A5F5",
+  "Surfactant Flood":         "#EC407A",
+  "Polymer Flood":            "#26A69A",
+  "Miscible Gas Injection":   "#8D6E63",
+  "PLA Surfactant Huff-n-Puff": "#FFB300"
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let projects = [];
+let map, clusterGroup, heatLayer;
+let heatmapVisible = false;
+let currentModalId = null;
+let noteTimeout = null;
+let hiddenTechs = new Set();
+let activeOperator = null;
+
+/* ============================================================
+   INIT
+   ============================================================ */
+window.addEventListener("DOMContentLoaded", () => {
+  loadProjects();
+  initMap();
+  buildYearFilter();
+  buildLegend();
+  buildOperatorFilter();
+  renderMarkers();
+  updateStats();
+});
+
+/* Load from localStorage or use defaults */
+function loadProjects() {
+  const stored = localStorage.getItem("eor_projects");
+  if (stored) {
+    try {
+      projects = JSON.parse(stored);
+    } catch { projects = structuredClone(DEFAULT_PROJECTS); }
+  } else {
+    projects = structuredClone(DEFAULT_PROJECTS);
+  }
+  mergeNotes();
+}
+
+function mergeNotes() {
+  const notes = JSON.parse(localStorage.getItem("eor_notes") || "{}");
+  projects.forEach(p => {
+    if (notes[p.id] !== undefined) p.notes = notes[p.id];
+  });
+}
+
+function saveProjects() {
+  localStorage.setItem("eor_projects", JSON.stringify(projects));
+}
+
+function saveNotes() {
+  const notes = {};
+  projects.forEach(p => { if (p.notes) notes[p.id] = p.notes; });
+  localStorage.setItem("eor_notes", JSON.stringify(notes));
+}
+
+/* ============================================================
+   MAP SETUP
+   ============================================================ */
+function initMap() {
+  map = L.map("map", {
+    center: [39, -98],
+    zoom: 4,
+    zoomControl: true,
+    maxBounds: [[-10, -180], [75, -50]],
+    maxBoundsViscosity: 0.8
+  });
+
+  /* Dark tile layer */
+  const dark = L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    { attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OSM', maxZoom: 19 }
+  );
+  const light = L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 }
+  );
+  dark.addTo(map);
+  window._tiles = { dark, light, current: "dark" };
+
+  clusterGroup = L.markerClusterGroup({
+    maxClusterRadius: 50,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false
+  });
+  map.addLayer(clusterGroup);
+
+  heatLayer = L.heatLayer([], { radius: 35, blur: 25, maxZoom: 8, max: 1.0 });
+}
+
+/* ============================================================
+   MARKERS
+   ============================================================ */
+function createMarkerIcon(tech) {
+  const color = TECH_COLORS[tech] || "#999";
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      width:14px;height:14px;border-radius:50%;
+      background:${color};
+      border:2.5px solid rgba(255,255,255,0.85);
+      box-shadow:0 0 6px ${color}88, 0 2px 6px rgba(0,0,0,0.4);
+    "></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+    popupAnchor: [0, -10]
+  });
+}
+
+function renderMarkers() {
+  clusterGroup.clearLayers();
+  const heatData = [];
+  const search = document.getElementById("searchBox").value.toLowerCase().trim();
+  const yearVal = document.getElementById("yearFilter").value;
+  let visibleCount = 0;
+
+  projects.forEach(p => {
+    if (hiddenTechs.has(p.technology)) return;
+    if (activeOperator && p.company !== activeOperator) return;
+    if (yearVal && p.year !== parseInt(yearVal)) return;
+    if (search) {
+      const haystack = [p.company, p.basin, p.wellName, p.technology, p.results]
+        .join(" ").toLowerCase();
+      if (!haystack.includes(search)) return;
+    }
+
+    const marker = L.marker([p.lat, p.lng], { icon: createMarkerIcon(p.technology) });
+    marker.bindTooltip(`<b>${p.company}</b><br>${p.technology} (${p.year})`, {
+      className: "custom-tooltip", direction: "top"
+    });
+    marker.on("click", () => openModal(p.id));
+    clusterGroup.addLayer(marker);
+    heatData.push([p.lat, p.lng, 1]);
+    visibleCount++;
+  });
+
+  heatLayer.setLatLngs(heatData);
+  document.getElementById("statVisible").textContent = visibleCount + " Visible";
+}
+
+function updateStats() {
+  document.getElementById("statTotal").textContent = projects.length + " Projects";
+}
+
+/* ============================================================
+   FILTERS
+   ============================================================ */
+function applyFilters() { renderMarkers(); }
+
+function buildYearFilter() {
+  const sel = document.getElementById("yearFilter");
+  const years = [...new Set(projects.map(p => p.year))].sort((a, b) => b - a);
+  sel.innerHTML = '<option value="">All Years</option>';
+  years.forEach(y => {
+    sel.innerHTML += `<option value="${y}">${y}</option>`;
+  });
+}
+
+/* ============================================================
+   LEGEND
+   ============================================================ */
+function buildLegend() {
+  const container = document.getElementById("legendItems");
+  container.innerHTML = "";
+  const techs = [...new Set(projects.map(p => p.technology))].sort();
+  techs.forEach(t => {
+    const color = TECH_COLORS[t] || "#999";
+    const div = document.createElement("div");
+    div.className = "legend-item" + (hiddenTechs.has(t) ? " dimmed" : "");
+    div.innerHTML = `<span class="legend-dot" style="background:${color}"></span>${t}`;
+    div.onclick = () => {
+      if (hiddenTechs.has(t)) hiddenTechs.delete(t); else hiddenTechs.add(t);
+      div.classList.toggle("dimmed");
+      renderMarkers();
+    };
+    container.appendChild(div);
+  });
+}
+
+/* ============================================================
+   OPERATOR FILTER
+   ============================================================ */
+function buildOperatorFilter() {
+  const container = document.getElementById("operatorFilter");
+  container.innerHTML = "";
+  const counts = {};
+  projects.forEach(p => { counts[p.company] = (counts[p.company] || 0) + 1; });
+  const operators = Object.keys(counts).sort();
+  operators.forEach(op => {
+    const div = document.createElement("div");
+    div.dataset.operator = op;
+    div.className = "operator-item";
+    div.innerHTML = `<span class="op-dot"></span><span>${op}</span><span class="op-count">${counts[op]}</span>`;
+    div.onclick = () => {
+      activeOperator = (activeOperator === op) ? null : op;
+      refreshOperatorStyles();
+      renderMarkers();
+    };
+    container.appendChild(div);
+  });
+  refreshOperatorStyles();
+}
+
+function refreshOperatorStyles() {
+  document.querySelectorAll(".operator-item").forEach(el => {
+    if (!activeOperator) {
+      el.classList.remove("dimmed", "active-op");
+    } else if (el.dataset.operator === activeOperator) {
+      el.classList.remove("dimmed");
+      el.classList.add("active-op");
+    } else {
+      el.classList.add("dimmed");
+      el.classList.remove("active-op");
+    }
+  });
+}
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+function openModal(id) {
+  const p = projects.find(x => x.id === id);
+  if (!p) return;
+  currentModalId = id;
+  document.getElementById("modalTitle").textContent = p.company;
+  document.getElementById("modalSub").textContent = p.wellName + " — " + p.basin;
+  document.getElementById("mBasin").textContent = p.basin;
+
+  const techColor = TECH_COLORS[p.technology] || "#999";
+  document.getElementById("mTech").innerHTML =
+    `<span class="tech-badge" style="background:${techColor}">${p.technology}</span>`;
+
+  document.getElementById("mYear").textContent = p.year;
+  document.getElementById("mWell").textContent = p.wellName;
+  document.getElementById("mResults").textContent = p.results;
+  document.getElementById("mCoords").textContent = p.lat.toFixed(3) + ", " + p.lng.toFixed(3);
+
+  const pdfEl = document.getElementById("mPdf");
+  if (p.pdfLink) {
+    pdfEl.innerHTML = `<a href="${escapeHtml(p.pdfLink)}" target="_blank" rel="noopener">Open PDF Report ↗</a>`;
+  } else {
+    pdfEl.textContent = "No PDF available";
+  }
+
+  document.getElementById("modalNotes").value = p.notes || "";
+  document.getElementById("noteStatus").textContent = "";
+  document.getElementById("modalOverlay").classList.add("visible");
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById("modalOverlay")) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById("modalOverlay").classList.remove("visible");
+  currentModalId = null;
+}
+
+function saveNote() {
+  if (currentModalId === null) return;
+  const p = projects.find(x => x.id === currentModalId);
+  if (!p) return;
+  p.notes = document.getElementById("modalNotes").value;
+  clearTimeout(noteTimeout);
+  document.getElementById("noteStatus").textContent = "Saving…";
+  noteTimeout = setTimeout(() => {
+    saveNotes();
+    saveProjects();
+    document.getElementById("noteStatus").textContent = "✓ Saved";
+  }, 400);
+}
+
+function deleteCurrentProject() {
+  if (currentModalId === null) return;
+  const p = projects.find(x => x.id === currentModalId);
+  if (!p || !confirm(`Delete project "${p.company} — ${p.wellName}"?`)) return;
+  projects = projects.filter(x => x.id !== currentModalId);
+  saveProjects();
+  saveNotes();
+  closeModalDirect();
+  buildYearFilter();
+  buildLegend();
+  buildOperatorFilter();
+  renderMarkers();
+  updateStats();
+}
+
+/* ============================================================
+   ADD PROJECT
+   ============================================================ */
+function addProject() {
+  const company = document.getElementById("fCompany").value.trim();
+  const basin   = document.getElementById("fBasin").value.trim();
+  const lat     = parseFloat(document.getElementById("fLat").value);
+  const lng     = parseFloat(document.getElementById("fLng").value);
+  const tech    = document.getElementById("fTech").value;
+  const year    = parseInt(document.getElementById("fYear").value);
+  const well    = document.getElementById("fWell").value.trim();
+  const results = document.getElementById("fResults").value.trim();
+  const pdf     = document.getElementById("fPdf").value.trim();
+
+  if (!company || !basin || isNaN(lat) || isNaN(lng) || isNaN(year)) {
+    alert("Please fill in all required fields (Company, Basin, Lat, Lng, Year).");
+    return;
+  }
+
+  const maxId = projects.reduce((m, p) => Math.max(m, p.id), 0);
+  projects.push({
+    id: maxId + 1, company, basin, lat, lng,
+    technology: tech, year, wellName: well || "Unnamed",
+    results: results || "Pending", pdfLink: pdf, notes: ""
+  });
+
+  saveProjects();
+  buildYearFilter();
+  buildLegend();
+  buildOperatorFilter();
+  renderMarkers();
+  updateStats();
+
+  ["fCompany","fBasin","fLat","fLng","fYear","fWell","fResults","fPdf"]
+    .forEach(id => document.getElementById(id).value = "");
+
+  map.setView([lat, lng], 8);
+}
+
+/* ============================================================
+   EXPORT / IMPORT
+   ============================================================ */
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(projects, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "eor_ior_database_" + new Date().toISOString().slice(0, 10) + ".json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) throw new Error("Not an array");
+      projects = data;
+      saveProjects();
+      buildYearFilter();
+      buildLegend();
+  buildOperatorFilter();
+      renderMarkers();
+      updateStats();
+      alert("Imported " + data.length + " projects successfully.");
+    } catch (err) {
+      alert("Invalid JSON file: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+}
+
+function resetData() {
+  if (!confirm("Reset all data to defaults? Your custom projects and notes will be lost.")) return;
+  localStorage.removeItem("eor_projects");
+  localStorage.removeItem("eor_notes");
+  projects = structuredClone(DEFAULT_PROJECTS);
+  saveProjects();
+  buildYearFilter();
+  buildLegend();
+  buildOperatorFilter();
+  renderMarkers();
+  updateStats();
+}
+
+/* ============================================================
+   HEATMAP & THEME TOGGLES
+   ============================================================ */
+function toggleHeatmap() {
+  heatmapVisible = !heatmapVisible;
+  const btn = document.getElementById("heatmapToggle");
+  if (heatmapVisible) {
+    map.addLayer(heatLayer);
+    btn.classList.add("active");
+  } else {
+    map.removeLayer(heatLayer);
+    btn.classList.remove("active");
+  }
+}
+
+function toggleTheme() {
+  document.body.classList.toggle("light-mode");
+  const btn = document.getElementById("themeToggle");
+  const isLight = document.body.classList.contains("light-mode");
+  btn.textContent = isLight ? "🌙" : "☀️";
+
+  if (isLight && window._tiles.current === "dark") {
+    map.removeLayer(window._tiles.dark);
+    map.addLayer(window._tiles.light);
+    window._tiles.current = "light";
+  } else if (!isLight && window._tiles.current === "light") {
+    map.removeLayer(window._tiles.light);
+    map.addLayer(window._tiles.dark);
+    window._tiles.current = "dark";
+  }
+}
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+function zoomTo(lat, lng, z) { map.setView([lat, lng], z); }
+
+function toggleSidebar() {
+  document.getElementById("sidebar").classList.toggle("open");
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* Close modal on Escape */
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeModalDirect();
+});
+</script>
+
+<!-- Tooltip style override for dark theme -->
+<style>
+.custom-tooltip {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--accent) !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  padding: 4px 8px !important;
+  box-shadow: 0 2px 8px var(--shadow) !important;
+}
+.custom-tooltip::before {
+  border-top-color: var(--accent) !important;
+}
+.leaflet-control-zoom a {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+}
+.leaflet-control-attribution {
+  background: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
+  font-size: 10px !important;
+}
+.leaflet-control-attribution a { color: var(--accent) !important; }
+</style>
+</body>
+</html>
