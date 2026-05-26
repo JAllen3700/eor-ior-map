@@ -274,6 +274,108 @@ body {
 }
 #deleteProject:hover { background: #e74c3c; }
 
+/* STAR MARKER for top projects */
+@keyframes starPulse {
+  0%   { box-shadow: 0 0 6px #FFD700, 0 0 12px #FFD70088; transform: scale(1); }
+  50%  { box-shadow: 0 0 14px #FFD700, 0 0 28px #FFD700aa; transform: scale(1.15); }
+  100% { box-shadow: 0 0 6px #FFD700, 0 0 12px #FFD70088; transform: scale(1); }
+}
+.star-marker {
+  width: 22px; height: 22px; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.star-marker .star-ring {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: radial-gradient(circle, #FFD700 30%, #FFA000 100%);
+  border: 2px solid #fff;
+  animation: starPulse 2s ease-in-out infinite;
+}
+.star-marker .star-icon {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 11px; line-height: 1;
+  color: #1a1a2e; font-weight: 900;
+}
+
+/* ANALYSIS PANEL (right sidebar) */
+#analysisPanel {
+  position: fixed; top: 52px; right: 0; bottom: 0;
+  width: 380px; z-index: 1050;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  overflow-y: auto; padding: 16px;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+}
+#analysisPanel.open { transform: translateX(0); }
+#analysisPanel h3 {
+  font-size: 13px; text-transform: uppercase;
+  color: var(--accent); letter-spacing: 1px;
+  margin: 16px 0 8px; border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+#analysisPanel h3:first-child { margin-top: 0; }
+#analysisToggle.active { background: var(--accent); color: #fff; }
+
+/* Scorecard table */
+.scorecard-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 12px; margin-bottom: 12px;
+}
+.scorecard-table th {
+  text-align: left; padding: 6px 6px;
+  color: var(--text-secondary); font-weight: 600;
+  border-bottom: 2px solid var(--border);
+  font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.scorecard-table td {
+  padding: 7px 6px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.scorecard-table tr { cursor: pointer; transition: background 0.15s; }
+.scorecard-table tbody tr:hover { background: var(--accent-dim); }
+.scorecard-table tr.row-top {
+  background: rgba(255,215,0,0.1);
+  border-left: 3px solid #FFD700;
+}
+.scorecard-table tr.row-top:hover { background: rgba(255,215,0,0.2); }
+.scorecard-table tr.row-good { border-left: 3px solid #66BB6A; }
+.scorecard-table tr.row-moderate { border-left: 3px solid #FFA726; }
+.scorecard-table tr.row-poor { border-left: 3px solid #EF5350; }
+
+.verdict-badge {
+  display: inline-block; padding: 1px 8px;
+  border-radius: 10px; font-size: 10px;
+  font-weight: 700; text-transform: uppercase;
+}
+.verdict-top     { background: #FFD700; color: #1a1a2e; }
+.verdict-good    { background: #66BB6A; color: #fff; }
+.verdict-moderate { background: #FFA726; color: #1a1a2e; }
+.verdict-poor    { background: #EF5350; color: #fff; }
+
+.takeaway-box {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 12px;
+  margin-bottom: 8px; font-size: 12px;
+  line-height: 1.5; color: var(--text-primary);
+}
+.takeaway-box strong { color: var(--accent); }
+.takeaway-num {
+  display: inline-block; width: 20px; height: 20px;
+  background: var(--accent); color: #fff;
+  border-radius: 50%; text-align: center;
+  line-height: 20px; font-size: 11px;
+  font-weight: 700; margin-right: 6px;
+  flex-shrink: 0;
+}
+
+/* Analysis panel scrollbar */
+#analysisPanel::-webkit-scrollbar { width: 6px; }
+#analysisPanel::-webkit-scrollbar-track { background: var(--bg-primary); }
+#analysisPanel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
 /* CLUSTER OVERRIDES */
 .marker-cluster-small { background: rgba(233,77,26,0.4); }
 .marker-cluster-small div { background: rgba(233,77,26,0.7); color:#fff; }
@@ -298,6 +400,7 @@ body {
   #map { left: 0; }
   #topbar .logo span { display: none; }
   #legend { bottom: 8px; right: 8px; min-width: 150px; }
+  #analysisPanel { width: 100%; }
 }
 </style>
 </head>
@@ -312,6 +415,7 @@ body {
     <option value="">All Years</option>
   </select>
   <button id="heatmapToggle" class="topbar-btn" onclick="toggleHeatmap()">🌡 Heatmap</button>
+  <button id="analysisToggle" class="topbar-btn" onclick="toggleAnalysis()">📊 Analysis</button>
   <button id="themeToggle" class="topbar-btn" onclick="toggleTheme()">☀️</button>
 </div>
 
@@ -403,6 +507,31 @@ body {
 <div id="legend">
   <h4>Technology Legend</h4>
   <div id="legendItems"></div>
+</div>
+
+<!-- ANALYSIS PANEL (right sidebar) -->
+<div id="analysisPanel">
+  <h3>⭐ EOR Scorecard</h3>
+  <table class="scorecard-table">
+    <thead>
+      <tr><th>Project</th><th>Technology</th><th>IRR</th><th>Verdict</th></tr>
+    </thead>
+    <tbody id="scorecardBody"></tbody>
+  </table>
+
+  <h3>Key Takeaways</h3>
+  <div class="takeaway-box">
+    <span class="takeaway-num">1</span>
+    <strong>Basin matters more than technology.</strong> Surfactant flood had IRR&nbsp;>200% in the Eagle Ford and failed in the Midland Basin with the same operator. Rock properties and fluid characteristics drive results — you can't copy a playbook across basins.
+  </div>
+  <div class="takeaway-box">
+    <span class="takeaway-num">2</span>
+    <strong>Target declined wells.</strong> The best economics come from wells with low current production but remaining oil in place. Downtime costs nothing when the baseline is near-zero — Tri-C's failure on a 200&nbsp;bopd well proves the inverse.
+  </div>
+  <div class="takeaway-box">
+    <span class="takeaway-num">3</span>
+    <strong>Treatment design multiplies returns.</strong> Third Wave's inter-well approach (inject 2, stimulate 9) delivered IRR&nbsp;>200%. Meanwhile, undertreatment on 2-mile Permian laterals killed economics. Volume, soak time, and completion strategy compound into very different outcomes.
+  </div>
 </div>
 
 <!-- MODAL -->
@@ -876,6 +1005,7 @@ window.addEventListener("DOMContentLoaded", () => {
   buildYearFilter();
   buildLegend();
   buildOperatorFilter();
+  buildScorecard();
   renderMarkers();
   updateStats();
 });
@@ -947,7 +1077,19 @@ function initMap() {
 /* ============================================================
    MARKERS
    ============================================================ */
-function createMarkerIcon(tech) {
+/* IDs of top-performing projects that get star markers */
+const STAR_PROJECT_IDS = new Set([14, 10]); /* Third Wave Multiwell & Pilot #1 */
+
+function createMarkerIcon(tech, projectId) {
+  if (STAR_PROJECT_IDS.has(projectId)) {
+    return L.divIcon({
+      className: "",
+      html: `<div class="star-marker"><div class="star-ring"></div><div class="star-icon">★</div></div>`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      popupAnchor: [0, -14]
+    });
+  }
   const color = TECH_COLORS[tech] || "#999";
   return L.divIcon({
     className: "",
@@ -980,7 +1122,7 @@ function renderMarkers() {
       if (!haystack.includes(search)) return;
     }
 
-    const marker = L.marker([p.lat, p.lng], { icon: createMarkerIcon(p.technology) });
+    const marker = L.marker([p.lat, p.lng], { icon: createMarkerIcon(p.technology, p.id) });
     marker.bindTooltip(`<b>${p.company}</b><br>${p.technology} (${p.year})`, {
       className: "custom-tooltip", direction: "top"
     });
@@ -1275,9 +1417,63 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-/* Close modal on Escape */
+/* ============================================================
+   ANALYSIS PANEL — Scorecard data & toggle
+   ============================================================ */
+const SCORECARD_DATA = [
+  { id:14, project:"Third Wave Multiwell",       tech:"Surfactant Flood",       irr:">200%",    payout:"2.5 mo",  verdict:"top" },
+  { id:10, project:"Third Wave Pilot #1",         tech:"Surfactant Flood",       irr:">100%",    payout:"7 mo",    verdict:"top" },
+  { id:3,  project:"BlackBrush Chittim Ranch",    tech:"Y-Grade HnP",           irr:"—",        payout:"Fast (50x)", verdict:"good" },
+  { id:12, project:"Third Wave Six-Well",          tech:"Surfactant Flood",       irr:"—",        payout:"$22/bbl", verdict:"good" },
+  { id:11, project:"Third Wave + Diverter",        tech:"Surfactant Flood",       irr:"~50%",     payout:"—",       verdict:"good" },
+  { id:32, project:"Ovintiv Midland Basin",        tech:"Surfactant Flood",       irr:"—",        payout:"—",       verdict:"good" },
+  { id:31, project:"Auterra PLA Surfactant",       tech:"PLA Surf. HnP",         irr:"—",        payout:"—",       verdict:"moderate" },
+  { id:1,  project:"EERC/C3 Bakken NGL",           tech:"NGL Cyclic Inj.",       irr:"—",        payout:"—",       verdict:"moderate" },
+  { id:6,  project:"Occidental Seminole CO2",      tech:"CO2 Flood",             irr:"—",        payout:"Long",    verdict:"moderate" },
+  { id:2,  project:"MD America Madison Co",        tech:"Cyclic Gas HnP",        irr:"—",        payout:"—",       verdict:"moderate" },
+  { id:8,  project:"Devon Wolfcamp",               tech:"Waterflood",            irr:"Minimal",  payout:"Slow",    verdict:"poor" },
+  { id:13, project:"Third Wave Midland",            tech:"Surfactant Flood",       irr:"Negative", payout:"Never",   verdict:"poor" },
+  { id:33, project:"Tri-C Fayette Co",              tech:"Gas HnP",               irr:"Negative", payout:"Never",   verdict:"poor" }
+];
+
+function buildScorecard() {
+  const body = document.getElementById("scorecardBody");
+  body.innerHTML = "";
+  SCORECARD_DATA.forEach(row => {
+    const tr = document.createElement("tr");
+    tr.className = "row-" + row.verdict;
+    const verdictClass = "verdict-" + row.verdict;
+    const verdictLabel = {top:"Best",good:"Strong",moderate:"Moderate",poor:"Failed"}[row.verdict];
+    tr.innerHTML = `
+      <td style="font-weight:600;color:var(--text-primary)">${row.project}</td>
+      <td style="color:var(--text-secondary)">${row.tech}</td>
+      <td>${row.irr}</td>
+      <td><span class="verdict-badge ${verdictClass}">${verdictLabel}</span></td>`;
+    tr.onclick = () => {
+      const p = projects.find(x => x.id === row.id);
+      if (p) {
+        map.setView([p.lat, p.lng], 9, { animate: true, duration: 1 });
+        setTimeout(() => openModal(p.id), 600);
+      }
+    };
+    body.appendChild(tr);
+  });
+}
+
+function toggleAnalysis() {
+  const panel = document.getElementById("analysisPanel");
+  const btn = document.getElementById("analysisToggle");
+  panel.classList.toggle("open");
+  btn.classList.toggle("active");
+}
+
+/* Close modal on Escape, also close analysis panel */
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape") closeModalDirect();
+  if (e.key === "Escape") {
+    closeModalDirect();
+    const panel = document.getElementById("analysisPanel");
+    if (panel.classList.contains("open")) toggleAnalysis();
+  }
 });
 </script>
 
